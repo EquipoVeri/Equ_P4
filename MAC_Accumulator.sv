@@ -15,15 +15,17 @@ module MAC_Accumulator #(
 	output [WORD_LENGTH-1:0] DataOutput
 );
 
-wire [NBITS_FOR_COUNTER-1:0] counter_ROM_wire;
-wire [NBITS_FOR_COUNTER-1:0] counter_RAM_wire;
-wire [NBITS_FOR_COUNTER-1:0] counter_acc_wire;
+wire [5:0] counter_ROM_wire;
+wire [5:0] counter_RAM_wire;
+wire [5:0] counter_acc_wire;
 wire [WORD_LENGTH-1:0] mux_wire;
 wire [WORD_LENGTH-1:0] filter_Result_wire;
+wire [WORD_LENGTH-1:0] Result_wire;
 wire [WORD_LENGTH-1:0] coeficient_wire;
 wire [WORD_LENGTH-1:0] result_wire;
 wire [WORD_LENGTH-1:0] accumulator_wire;
 wire flag_ROM_counter;
+wire enable_Result;
 
 
 CounterWithFunction
@@ -62,7 +64,6 @@ Counter_RAM
 	.clk(clk),
 	.reset(reset),
 	.enable(enable & flag_ROM_counter),
-	.sync_reset(sync_reset),
 	.count(counter_RAM_wire),
 	.flag()
 );
@@ -108,19 +109,33 @@ Mux_Zero
 
 Register 
 #(
-	.WORD_LENGTH(WORD_LENGTH)
+	.Word_Length(WORD_LENGTH)
 )
-Register_Bypass_R 
+Register_Enable_Result
 (
 	.clk(clk),
 	.reset(reset),
-	.enable(sync_reset),
+	.enable(enable_Result),
 	.Data_Input(result_wire),
 	.Data_Output(filter_Result_wire)
 );
 
+Register 
+#(
+	.Word_Length(WORD_LENGTH)
+)
+Register_Result
+(
+	.clk(clk),
+	.reset(reset),
+	.enable(sync_reset),
+	.Data_Input(filter_Result_wire),
+	.Data_Output(Result_wire)
+);
+
+assign enable_Result = ~|(counter_ROM_wire);
 assign counter_acc_wire = counter_ROM_wire + counter_RAM_wire;
-assign DataOutput = filter_Result_wire;
+assign DataOutput = Result_wire;
 
  /*--------------------------------------------------------------------*/
  /*Log Function*/

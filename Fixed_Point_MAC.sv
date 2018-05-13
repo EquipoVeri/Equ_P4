@@ -1,4 +1,5 @@
-module Fixed_Point_MAC
+
+ module Fixed_Point_MAC
 #(
 	parameter Word_Length = 6,
 	parameter Integer_Part = 3,
@@ -15,7 +16,6 @@ module Fixed_Point_MAC
 logic signed  [2*Word_Length-1:0] X_wire;
 logic signed [Word_Length-1:0] X_Trunc_wire, D_wire;
 
-//---------------------------------------------------------------------------------------------
 
 always_comb
 begin
@@ -24,8 +24,6 @@ begin
 	D_wire = X_Trunc_wire + C;
 end
 
-//---------------------------------------------------------------------------------------------
-
 assign D = D_wire;
 
-endmodule 
+endmodule

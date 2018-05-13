@@ -1,27 +1,29 @@
-module Register #(
-	// PARAMETERS
-	parameter WORD_LENGTH = 16
-) 
+ module Register
+#(
+	parameter Word_Length = 8
+)
+
 (
-	// INPUTS
+	// Input Ports
 	input clk,
 	input reset,
 	input enable,
-	input [WORD_LENGTH-1:0] Data_Input,
-	// OUTPUTS
-	output logic [WORD_LENGTH-1:0] Data_Output
+	input [Word_Length-1:0] Data_Input,
+
+	// Output Ports
+	output [Word_Length-1:0] Data_Output
 );
 
-// ---------------------------------------------------------------------------------------
+logic  [Word_Length-1:0] Data_logic;
 
 always_ff@(posedge clk or negedge reset) begin: ThisIsARegister
-	// Checking reset.
 	if(reset == 1'b0) 
-		Data_Output <= {WORD_LENGTH{1'b0}};
+		Data_logic <= 0;
 	else 
-	 if(enable == 1'b1)
-	 	// Assign input as output.
-		Data_Output <= Data_Input;
+		if(enable == 1'b1)
+			Data_logic <= Data_Input;
 end: ThisIsARegister
 
-endmodule 
+assign Data_Output = Data_logic;
+
+endmodule

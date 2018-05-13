@@ -25,6 +25,30 @@ wire [WORD_LENGTH-1:0] DataChannel_L;
 wire [WORD_LENGTH-1:0] DataChannel_R;
 wire [WORD_LENGTH-1:0] Reg_Bypass_L;
 wire [WORD_LENGTH-1:0] Reg_Bypass_R;
+wire [WORD_LENGTH-1:0] Mux_L;
+wire [WORD_LENGTH-1:0] Mux_R;
+wire [WORD_LENGTH-1:0] data_chL_w;
+wire [WORD_LENGTH-1:0] data_chR_w;
+wire [WORD_LENGTH-1:0] LPF_L_wire;
+wire [WORD_LENGTH-1:0] LPF_R_wire;
+
+wire [WORD_LENGTH-1:0] BPF_L_wire;
+wire [WORD_LENGTH-1:0] BPF_R_wire;
+
+wire [WORD_LENGTH-1:0] HPF_L_wire;
+wire [WORD_LENGTH-1:0] HPF_R_wire;
+wire I2C_SCLK_wire;
+wire AUD_XCK_wire;
+wire AUD_DACDAT_wire;
+wire AUD_ADCLRCK_wire;
+wire Serial_L;
+wire Serial_R;
+bit enable_shotR_b;
+bit enable_shotL_b;
+bit shot_R_b;
+bit shot_L_b;
+
+logic AUD_DACDAT_log;
 
 Filtering Filtering(
 	.CLOCK_50,
@@ -35,85 +59,203 @@ Filtering Filtering(
 	.AUD_ADCLRCK,
 	.AUD_ADCDAT,
 	.AUD_DACLRCK,
-	.AUD_DACDAT,
+	//.AUD_DACDAT,
 	.AUD_BCLK,
-	.AUD_XCK,
+	.AUD_XCK
+);
+/*
+MAC_Retard
+#(	
+	.WORD_LENGTH(WORD_LENGTH)
+)
+MAC_Retard_Generate
+(
+	.CLOCK_50,
+	.reset,
+	.AUD_BCLK,
+	.shot_R(shot_R_b),
+	.shot_L(shot_L_b),
+	.Channel_R(DataChannel_R),
+	.Channel_L(DataChannel_L),
+	.LPF_L(LPF_L_wire),
+	.LPF_R(LPF_R_wire),
+	.BPF_L(BPF_L_wire),
+	.BPF_R(BPF_R_wire),
+	.HPF_L(HPF_L_wire),
+	.HPF_R(HPF_R_wire)
+);
+*/
+MAC_Filter
+#(	
+	.WORD_LENGTH(WORD_LENGTH)
+)
+MAC_Accumulate_Filter
+(
+	.CLOCK_50,
+	.reset,
+	.AUD_BCLK,
+	.shot_R(shot_R_b),
+	.shot_L(shot_L_b),
+	.Channel_R(Reg_Bypass_R),
+	.Channel_L(Reg_Bypass_L),
+	.LPF_L(LPF_L_wire),
+	.LPF_R(LPF_R_wire),
+	.BPF_L(BPF_L_wire),
+	.BPF_R(BPF_R_wire),
+	.HPF_L(HPF_L_wire),
+	.HPF_R(HPF_R_wire)
 );
 
 // ---------------------------------------------------------------------------------------
 // Converting the serial data from the CODEC into parallel data.
 
-Register_MAC 
-#(
-	.WORD_LENGTH(WORD_LENGTH)
-)	
-Serial_Register_L 
-(
-	.clk(AUD_BCLK),
-	.reset(reset),
-	.enable(~AUD_DACLRCK),
-	.Data_Input(AUD_ADCDAT),
-	.Data_Output(DataChannel_L)
-);
-
-Register_MAC 
+shift_register_er
 #(
 	.WORD_LENGTH(WORD_LENGTH)
 )
-Serial_Register_R 
+register_input_chL
+(
+    .clk(AUD_BCLK),
+    .reset(reset),
+    .enable(~AUD_DACLRCK),
+    .d(AUD_ADCDAT),
+    .q(DataChannel_L)
+);
+
+shift_register_er
+#(
+	.WORD_LENGTH(WORD_LENGTH)
+)
+register_input_chR
+(
+    .clk(AUD_BCLK),
+    .reset(reset),
+    .enable(AUD_DACLRCK),
+    .d(AUD_ADCDAT),
+    .q(DataChannel_R)
+);
+
+// ---------------------------------------------------------------------------------------
+// One shots enable the filters at the appropriate AUD_DACLRCK edges.
+
+One_Shot shot_L
 (
 	.clk(AUD_BCLK),
 	.reset(reset),
-	.enable(AUD_DACLRCK),
-	.Data_Input(AUD_ADCDAT),
-	.Data_Output(DataChannel_R)
+	.Start(enable_shotL_b),
+	.Shot(shot_L_b)
+);
+
+One_Shot shot_R
+(
+	.clk(AUD_BCLK),
+	.reset(reset),
+	.Start(enable_shotR_b),
+	.Shot(shot_R_b)
 );
 
 // ---------------------------------------------------------------------------------------
 // Bypass registers of parallel data in to syncronize filters and AUD_DACLRCK edges.
 
+////////////// BYPASS REGISTERS ////////////
+
 Register 
 #(
-	.WORD_LENGTH(WORD_LENGTH)
+	.Word_Length(WORD_LENGTH)
 )
 Register_Bypass_R 
 (
 	.clk(AUD_BCLK),
 	.reset(reset),
-	.enable(),
+	.enable(shot_R_b),
 	.Data_Input(DataChannel_R),
 	.Data_Output(Reg_Bypass_R)
 );
 
 Register 
 #(
-	.WORD_LENGTH(WORD_LENGTH)
+	.Word_Length(WORD_LENGTH)
 )
 Register_Bypass_L 
 (
 	.clk(AUD_BCLK),
 	.reset(reset),
-	.enable(),
+	.enable(shot_L_b),
 	.Data_Input(DataChannel_L),
 	.Data_Output(Reg_Bypass_L)
 );
 
-// ---------------------------------------------------------------------------------------
-//Filters with single MAC accumulator.
+/////////// TRANSMIT DATA TO DAC /////////////////////////
 
-MAC_Accumulator 
+Serial_Send_Register
 #(
-	.WORD_LENGTH(WORD_LENGTH),
-	.ROM_FILE("LPF.txt")
-)	
-Low_Pass_MAC_filter_L
+	.LENGTH(WORD_LENGTH)
+)
+serial_reg_L
 (
 	.clk(AUD_BCLK),
 	.reset(reset),
-	.DataInput(Reg_Bypass_L),
-	.enable(1'b1),
-	.sync_reset(),
-	.DataOutput()
+	.DataParalel_in(Mux_L),
+	.enable(~AUD_DACLRCK),
+	.DataOutput(Serial_L),
+	.Flag(enable_shotL_b)
 );
+
+Serial_Send_Register
+#(
+	.LENGTH(WORD_LENGTH)
+)
+serial_reg_R
+(
+	.clk(AUD_BCLK),
+	.reset(reset),
+	.DataParalel_in(Mux_R),
+	.enable(AUD_DACLRCK),
+	.DataOutput(Serial_R),
+	.Flag(enable_shotR_b)
+);
+
+//////////MULTIPLEXERS///////////////////////////
+Multiplexer4to1
+#(
+	.NBits(WORD_LENGTH)
+)
+mux_filters_L
+(
+	.Selector(Selector),
+	.MUX_Data0(Reg_Bypass_L),
+	.MUX_Data1(LPF_L_wire),
+	.MUX_Data2(BPF_L_wire),
+	.MUX_Data3(HPF_L_wire),
+	.MUX_Output(Mux_L)
+);
+
+Multiplexer4to1
+#(
+	.NBits(WORD_LENGTH)
+)
+mux_filters_R
+(
+	.Selector(Selector),
+	.MUX_Data0(Reg_Bypass_R),
+	.MUX_Data1(LPF_R_wire),
+	.MUX_Data2(BPF_R_wire),
+	.MUX_Data3(HPF_R_wire),
+	.MUX_Output(Mux_R)
+);
+
+Multiplexer2to1
+#(
+	.NBits(1)
+)
+mux_dac
+(
+	.Selector(AUD_DACLRCK),
+	.MUX_Data0(Serial_L),
+	.MUX_Data1(Serial_R),
+	.MUX_Output(AUD_DACDAT_log)
+);
+
+assign AUD_DACDAT = AUD_DACDAT_log;
 
 endmodule 

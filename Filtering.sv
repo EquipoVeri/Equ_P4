@@ -11,7 +11,7 @@ module Filtering (
 	output AUD_ADCLRCK,					//	Audio CODEC ADC LR Clock
 	input AUD_ADCDAT,						//	Audio CODEC ADC Data
 	inout AUD_DACLRCK,					//	Audio CODEC DAC LR Clock
-	output AUD_DACDAT,					//	Audio CODEC DAC Data
+	//output AUD_DACDAT,					//	Audio CODEC DAC Data
 	inout AUD_BCLK,						//	Audio CODEC Bit-Stream Clock
 	output AUD_XCK							//	Audio CODEC Chip Clock
 );
@@ -19,7 +19,7 @@ module Filtering (
 
 wire AUD_CTRL_CLK;
 wire DLY_RST;
-logic AUD_DACDAT_log;
+//logic AUD_DACDAT_log;
 
 // ---------------------------------------------------------------------------------------
 // CODEC modules.
@@ -59,7 +59,7 @@ AUDIO_DAC u4 (
 	
 assign AUD_ADCLRCK	=	AUD_DACLRCK;
 assign AUD_XCK			=	AUD_CTRL_CLK;
-assign AUD_DACDAT 	= AUD_DACDAT_log; 	
+//assign AUD_DACDAT 	= AUD_DACDAT_log; 	
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -68,16 +68,10 @@ assign AUD_DACDAT 	= AUD_DACDAT_log;
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// USER ZONE ///////////////////////////////////////////////
 
-always_comb begin
-	if(Selector)
-		AUD_DACDAT_log = AUD_ADCDAT;
-	else
-		AUD_DACDAT_log = 0;
-end
 
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 
-endmodule
+endmodule 
