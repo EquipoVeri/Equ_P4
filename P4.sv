@@ -98,4 +98,22 @@ Register_Bypass_L
 	.Data_Output(Reg_Bypass_L)
 );
 
+// ---------------------------------------------------------------------------------------
+//Filters with single MAC accumulator.
+
+MAC_Accumulator 
+#(
+	.WORD_LENGTH(WORD_LENGTH),
+	.ROM_FILE("LPF.txt")
+)	
+Low_Pass_MAC_filter_L
+(
+	.clk(AUD_BCLK),
+	.reset(reset),
+	.DataInput(Reg_Bypass_L),
+	.enable(1'b1),
+	.sync_reset(),
+	.DataOutput()
+);
+
 endmodule 
